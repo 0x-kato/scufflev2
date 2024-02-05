@@ -20,12 +20,22 @@ model User {
 
   firstName String?
   lastName String?
+
+  tips Tips[]
+
+  @@map("users")
+
 }
 
 model Tips {
   id Int @id @default(autoincrement())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  userId Int
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("tips")
 }
 
 // model TipHistory {

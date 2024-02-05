@@ -11,11 +11,11 @@ export class AuthController {
     console.log({
       dto: dto,
     });
-    return this.authService.register();
+    return this.authService.register(dto);
   }
 
   @Post('login')
-  login() {
-    return this.authService.login();
+  login(@Body() dto: AuthDto) {
+    return this.authService.login(dto);
   }
 }
