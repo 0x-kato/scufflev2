@@ -14,11 +14,12 @@ datasource db {
 // User Model
 model User {
   user_id         Int       @id @default(autoincrement())
-  username        String
-  first_name      String
-  last_name       String
+  username        String?   @unique
+  first_name      String?
+  last_name       String?
+  email           String    @unique
   registration_date DateTime @default(now())
-  password_hash   String
+  hash   String
   tipsSent        Tip[]     @relation("tipsSent")
   tipsReceived    Tip[]     @relation("tipsReceived")
   balances        UserBalance[]
@@ -34,7 +35,7 @@ model Tip {
   amount        Float
   currency      String
   tip_time      DateTime      @default(now())
-  message       String?       // Optional field
+  message       String?       
   status        String
   history       TipHistory[]
   sender        User          @relation("tipsSent", fields: [sender_id], references: [user_id])

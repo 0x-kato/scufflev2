@@ -23,7 +23,7 @@ export class AuthService {
           hash,
         },
       });
-      return this.signToken(user.id, user.email);
+      return this.signToken(user.user_id, user.email);
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -44,7 +44,7 @@ export class AuthService {
 
     const passwordMatch = await argon.verify(user.hash, dto.password);
     if (!passwordMatch) throw new ForbiddenException('Wrong email/password.');
-    return this.signToken(user.id, user.email);
+    return this.signToken(user.user_id, user.email);
   }
 
   async signToken(
