@@ -60,6 +60,7 @@ export class AuthService {
       expiresIn: '3600m',
       secret: this.config.get('JWT_SECRET'),
     });
+    console.log('succesfully logged in ' + userId);
     return {
       access_token: token,
     };
