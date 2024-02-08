@@ -15,8 +15,6 @@ datasource db {
 model User {
   user_id         Int       @id @default(autoincrement())
   username        String?   @unique
-  first_name      String?
-  last_name       String?
   email           String    @unique
   registration_date DateTime @default(now())
   hash   String
