@@ -16,8 +16,10 @@ model User {
   user_id         Int       @id @default(autoincrement())
   username        String?   @unique
   email           String    @unique
-  registration_date DateTime @default(now())
-  hash   String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  hash            String
+  hashedRt        String?
   tipsSent        Tip[]     @relation("tipsSent")
   tipsReceived    Tip[]     @relation("tipsReceived")
   balances        UserBalance[]
@@ -35,21 +37,10 @@ model Tip {
   tip_time      DateTime      @default(now())
   message       String?       
   status        String
-  history       TipHistory[]
   sender        User          @relation("tipsSent", fields: [sender_id], references: [user_id])
   receiver      User          @relation("tipsReceived", fields: [receiver_id], references: [user_id])
 
   @@map("tips")
-}
-
-// Tip History Model
-model TipHistory {
-  history_id   Int      @id @default(autoincrement())
-  tip_id       Int
-  event_type   String
-  event_time   DateTime @default(now())
-  details      String?
-  tip          Tip      @relation(fields: [tip_id], references: [tip_id])
 }
 
 // Currency Model
