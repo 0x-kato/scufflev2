@@ -12,3 +12,12 @@ export class AuthDto {
   @Length(5, 100)
   password: string;
 }
+
+export class LoginDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @Length(5, 100)
+  password: string;
+}
