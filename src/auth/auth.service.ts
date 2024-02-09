@@ -6,6 +6,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Tokens, JwtPayload } from './types';
+import LoginResponse from './interfaces/login-response.interface';
 
 @Injectable()
 export class AuthService {
@@ -15,21 +16,32 @@ export class AuthService {
     private jwt: JwtService,
   ) {}
 
-  async register(dto: AuthDto) {
+  async register(dto: AuthDto): Promise<Tokens> {
     const hash = await argon.hash(dto.password);
 
-    const user = await this.prisma.user
-      .create({
-        data: {
-          username: dto.username,
-          email: dto.email,
-          hash,
-        },
+    const user = await this.prisma
+      .$transaction(async (prisma) => {
+        const user = await prisma.user.create({
+          data: {
+            username: dto.username,
+            email: dto.email,
+            hash,
+          },
+        });
+
+        await prisma.userBalance.create({
+          data: {
+            user_id: user.user_id,
+            balance: 100, // Setting the initial balance to 100
+          },
+        });
+
+        return user;
       })
       .catch((error) => {
         if (error instanceof PrismaClientKnownRequestError) {
           if (error.code === 'P2002') {
-            throw new ForbiddenException('Credentials incorrect');
+            throw new ForbiddenException('Email or username already exists');
           }
         }
         throw error;
@@ -41,7 +53,7 @@ export class AuthService {
     return tokens;
   }
 
-  async login(dto: LoginDto): Promise<Tokens> {
+  async login(dto: LoginDto): Promise<LoginResponse> {
     const user = await this.prisma.user.findUnique({
       where: {
         email: dto.email,
@@ -56,7 +68,7 @@ export class AuthService {
     const tokens = await this.getTokens(user.user_id, user.email);
     await this.updateRtHash(user.user_id, tokens.refresh_token);
 
-    return tokens;
+    return { tokens, username: user.username };
   }
 
   async logout(userId: number): Promise<boolean> {

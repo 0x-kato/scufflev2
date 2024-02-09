@@ -33,7 +33,6 @@ model Tip {
   sender_id     Int
   receiver_id   Int
   amount        Float
-  currency      String
   tip_time      DateTime      @default(now())
   message       String?       
   status        String
@@ -43,21 +42,13 @@ model Tip {
   @@map("tips")
 }
 
-// Currency Model
-model Currency {
-  currency_id    Int           @id @default(autoincrement())
-  currency_code  String
-  currency_name  String
-  balances       UserBalance[]
-}
-
 // User Balance Model
 model UserBalance {
   balance_id     Int      @id @default(autoincrement())
-  user_id        Int
-  currency_id    Int
+  user_id        Int      @unique
   balance        Float
   last_updated   DateTime @default(now())
   user           User     @relation(fields: [user_id], references: [user_id])
-  currency       Currency @relation(fields: [currency_id], references: [currency_id])
+
+  @@map("balances")
 }
