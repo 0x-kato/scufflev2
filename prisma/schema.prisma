@@ -19,7 +19,6 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   hash            String
-  hashedRt        String?
   tipsSent        Tip[]     @relation("tipsSent")
   tipsReceived    Tip[]     @relation("tipsReceived")
   balances        UserBalance[]

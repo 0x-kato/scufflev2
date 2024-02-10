@@ -1,5 +1,5 @@
 export default class TipsDto {
   senderId: number;
-  receiverId: number;
+  receiverUsername: string;
   amount: number;
 }

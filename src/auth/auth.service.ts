@@ -32,7 +32,7 @@ export class AuthService {
         await prisma.userBalance.create({
           data: {
             user_id: user.user_id,
-            balance: 100, // Setting the initial balance to 100
+            balance: 100, // setting the initial balance to 100 so users are able to tip
           },
         });
 
@@ -48,7 +48,6 @@ export class AuthService {
       });
 
     const tokens = await this.getTokens(user.user_id, user.email);
-    await this.updateRtHash(user.user_id, tokens.refresh_token);
 
     return tokens;
   }
@@ -66,9 +65,8 @@ export class AuthService {
     if (!passwordMatches) throw new ForbiddenException('Wrong email/password.');
 
     const tokens = await this.getTokens(user.user_id, user.email);
-    await this.updateRtHash(user.user_id, tokens.refresh_token);
 
-    return { tokens, username: user.username };
+    return { tokens, username: user.username, user_id: user.user_id };
   }
 
   async logout(userId: number): Promise<boolean> {
@@ -98,21 +96,8 @@ export class AuthService {
     if (!rtMatches) throw new ForbiddenException('Access Denied');
 
     const tokens = await this.getTokens(user.user_id, user.email);
-    await this.updateRtHash(user.user_id, tokens.refresh_token);
 
     return tokens;
-  }
-
-  async updateRtHash(userId: number, rt: string): Promise<void> {
-    const hash = await argon.hash(rt);
-    await this.prisma.user.update({
-      where: {
-        user_id: userId,
-      },
-      data: {
-        hashedRt: hash,
-      },
-    });
   }
 
   async getTokens(userId: number, email: string): Promise<Tokens> {
@@ -121,20 +106,14 @@ export class AuthService {
       email: email,
     };
 
-    const [at, rt] = await Promise.all([
-      this.jwt.signAsync(jwtPayload, {
-        secret: this.config.get<string>('AT_SECRET'),
-        expiresIn: '15m',
-      }),
-      this.jwt.signAsync(jwtPayload, {
-        secret: this.config.get<string>('RT_SECRET'),
-        expiresIn: '7d',
-      }),
-    ]);
+    // setting expiry really high for the sake of simple project
+    const at = await this.jwt.signAsync(jwtPayload, {
+      secret: this.config.get<string>('AT_SECRET'),
+      expiresIn: '3600m',
+    });
 
     return {
       access_token: at,
-      refresh_token: rt,
     };
   }
 }

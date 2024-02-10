@@ -9,7 +9,7 @@ import {
 import { AuthService } from './auth.service';
 import { AuthDto, LoginDto } from './dto';
 import { Tokens } from './types';
-import { GetCurrentUser, GetCurrentUserId, Public } from 'src/common/decorator';
+import { GetCurrentUserId, Public } from 'src/common/decorator';
 import { AtGuard } from 'src/common/guard';
 import LoginResponse from './interfaces/login-response.interface';
 
@@ -37,14 +37,5 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   logout(@GetCurrentUserId() userId: number): Promise<boolean> {
     return this.authService.logout(userId);
-  }
-
-  @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  refreshTokens(
-    @GetCurrentUserId() userId: number,
-    @GetCurrentUser('refreshToken') refreshToken: string,
-  ) {
-    return this.authService.refreshTokens(userId, refreshToken);
   }
 }

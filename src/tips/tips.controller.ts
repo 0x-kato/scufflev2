@@ -9,15 +9,19 @@ import {
 import { AtGuard } from 'src/common/guard';
 import TipsDto from './dto/tips.dto';
 import { TipsService } from './tips.service';
+import { GetCurrentUserId } from 'src/common/decorator';
 
 @Controller('tips')
 export class TipsController {
   constructor(private tipsService: TipsService) {}
 
-  @Post('/send-tip')
   @UseGuards(AtGuard)
   @HttpCode(HttpStatus.OK)
-  async sendTip(@Body() tipDto: TipsDto) {
-    return this.tipsService.sendTip(tipDto);
+  @Post('send')
+  async sendTip(
+    @Body() tipDto: TipsDto,
+    @GetCurrentUserId() userId: number,
+  ): Promise<void> {
+    return this.tipsService.sendTip(tipDto, userId);
   }
 }
