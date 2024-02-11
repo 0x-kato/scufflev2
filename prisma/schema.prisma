@@ -33,7 +33,6 @@ model Tip {
   receiver_id   Int
   amount        Float
   tip_time      DateTime      @default(now())
-  message       String?       
   status        String
   sender        User          @relation("tipsSent", fields: [sender_id], references: [user_id])
   receiver      User          @relation("tipsReceived", fields: [receiver_id], references: [user_id])

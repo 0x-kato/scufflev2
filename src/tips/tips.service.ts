@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import TipsDto from './dto/tips.dto';
+import TipHistoryDto from './dto/tipHistory.dto';
+import TipReceivedDto from './dto/tipReceived.dto';
 
 @Injectable()
 export class TipsService {
@@ -13,8 +15,6 @@ export class TipsService {
 
     if (!receiverUsername)
       throw new NotFoundException('Receiver username is required.');
-
-    // Retrieve receiver user data
     const receiver = await this.prisma.user.findUnique({
       where: { username: receiverUsername },
     });
@@ -23,36 +23,61 @@ export class TipsService {
         `Receiver with username "${receiverUsername}" not found.`,
       );
 
-    // Retrieve sender and receiver balances
     const senderBalance = await this.prisma.userBalance.findUnique({
       where: { user_id: senderId },
     });
     if (!senderBalance || senderBalance.balance < amount)
       throw new Error('Insufficient sender balance.');
 
-    // Perform transaction
     await this.prisma.$transaction(async (prisma) => {
-      // Deduct amount from sender
       await prisma.userBalance.update({
         where: { user_id: senderId },
         data: { balance: { decrement: amount } },
       });
 
-      // Add amount to receiver
       await prisma.userBalance.update({
         where: { user_id: receiver.user_id },
         data: { balance: { increment: amount } },
       });
 
-      // Log the tip transaction
       await prisma.tip.create({
         data: {
           sender_id: senderId,
           receiver_id: receiver.user_id,
           amount,
-          status: 'Completed', // or any other status based on your logic
+          status: 'Completed',
         },
       });
     });
+  }
+
+  async getTipHistory(senderId: number): Promise<TipHistoryDto[]> {
+    const tips = await this.prisma.tip.findMany({
+      where: { sender_id: senderId },
+      include: {
+        sender: true,
+        receiver: true,
+      },
+      orderBy: {
+        tip_time: 'desc',
+      },
+    });
+
+    return tips.map((tip) => new TipHistoryDto(tip));
+  }
+
+  async getReceivedHistory(receiverId: number): Promise<TipReceivedDto[]> {
+    const tips = await this.prisma.tip.findMany({
+      where: { receiver_id: receiverId },
+      include: {
+        sender: true,
+        receiver: true,
+      },
+      orderBy: {
+        tip_time: 'desc',
+      },
+    });
+
+    return tips.map((tip) => new TipReceivedDto(tip));
   }
 }

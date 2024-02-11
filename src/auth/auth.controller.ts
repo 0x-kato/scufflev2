@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthDto, LoginDto } from './dto';
-import { Tokens } from './types';
 import { GetCurrentUserId, Public } from 'src/common/decorator';
 import { AtGuard } from 'src/common/guard';
 import LoginResponse from './interfaces/login-response.interface';
@@ -20,21 +19,21 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  register(@Body() dto: AuthDto): Promise<Tokens> {
+  register(@Body() dto: AuthDto): Promise<LoginResponse> {
     console.log('registered ' + dto.username);
     return this.authService.register(dto);
   }
 
   @Public()
   @Post('login')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.CREATED)
   login(@Body() loginDto: LoginDto): Promise<LoginResponse> {
     return this.authService.login(loginDto);
   }
 
   @UseGuards(AtGuard)
   @Post('logout')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.CREATED)
   logout(@GetCurrentUserId() userId: number): Promise<boolean> {
     return this.authService.logout(userId);
   }

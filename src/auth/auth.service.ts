@@ -16,7 +16,7 @@ export class AuthService {
     private jwt: JwtService,
   ) {}
 
-  async register(dto: AuthDto): Promise<Tokens> {
+  async register(dto: AuthDto): Promise<LoginResponse> {
     const hash = await argon.hash(dto.password);
 
     const user = await this.prisma
@@ -49,7 +49,7 @@ export class AuthService {
 
     const tokens = await this.getTokens(user.user_id, user.email);
 
-    return tokens;
+    return { tokens, username: user.username, user_id: user.user_id };
   }
 
   async login(dto: LoginDto): Promise<LoginResponse> {
