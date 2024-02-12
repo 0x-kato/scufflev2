@@ -9,8 +9,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
-import { GetCurrentUser, GetCurrentUserId } from 'src/common/decorator';
-import { AtGuard } from 'src/common/guard';
+import { GetCurrentUser, GetCurrentUserId } from '../common/decorator';
+import { AtGuard } from '../common/guard';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto';
 

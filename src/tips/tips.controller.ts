@@ -7,10 +7,10 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { AtGuard } from 'src/common/guard';
+import { AtGuard } from '../common/guard';
 import TipsDto from './dto/tips.dto';
 import { TipsService } from './tips.service';
-import { GetCurrentUserId } from 'src/common/decorator';
+import { GetCurrentUserId } from '../common/decorator';
 import TipHistoryDto from './dto/tipHistory.dto';
 import TipReceivedDto from './dto/tipReceived.dto';
 

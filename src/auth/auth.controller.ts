@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthDto, LoginDto } from './dto';
-import { GetCurrentUserId, Public } from 'src/common/decorator';
-import { AtGuard } from 'src/common/guard';
+import { GetCurrentUserId, Public } from '../common/decorator';
+import { AtGuard } from '../common/guard';
 import LoginResponse from './interfaces/login-response.interface';
 
 @Controller('auth')
