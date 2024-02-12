@@ -84,22 +84,6 @@ export class AuthService {
     return true;
   }
 
-  async refreshTokens(userId: number, rt: string): Promise<Tokens> {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        user_id: userId,
-      },
-    });
-    if (!user || !user.hashedRt) throw new ForbiddenException('Access Denied');
-
-    const rtMatches = await argon.verify(user.hashedRt, rt);
-    if (!rtMatches) throw new ForbiddenException('Access Denied');
-
-    const tokens = await this.getTokens(user.user_id, user.email);
-
-    return tokens;
-  }
-
   async getTokens(userId: number, email: string): Promise<Tokens> {
     const jwtPayload: JwtPayload = {
       sub: userId,
