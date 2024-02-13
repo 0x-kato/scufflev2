@@ -25,6 +25,8 @@ export class AuthService {
           data: {
             username: dto.username,
             email: dto.email,
+            lowercase_username: dto.username.toLowerCase(),
+            lowercase_email: dto.email.toLowerCase(),
             hash,
           },
         });
@@ -55,7 +57,7 @@ export class AuthService {
   async login(dto: LoginDto): Promise<LoginResponse> {
     const user = await this.prisma.user.findUnique({
       where: {
-        email: dto.email,
+        lowercase_email: dto.email.toLowerCase(),
       },
     });
 
@@ -67,21 +69,6 @@ export class AuthService {
     const tokens = await this.getTokens(user.user_id, user.email);
 
     return { tokens, username: user.username, user_id: user.user_id };
-  }
-
-  async logout(userId: number): Promise<boolean> {
-    await this.prisma.user.updateMany({
-      where: {
-        user_id: userId,
-        hashedRt: {
-          not: null,
-        },
-      },
-      data: {
-        hashedRt: null,
-      },
-    });
-    return true;
   }
 
   async getTokens(userId: number, email: string): Promise<Tokens> {

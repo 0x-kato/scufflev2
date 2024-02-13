@@ -13,15 +13,17 @@ datasource db {
 
 // User Model
 model User {
-  user_id         Int       @id @default(autoincrement())
-  username        String?   @unique
-  email           String    @unique
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  hash            String
-  tipsSent        Tip[]     @relation("tipsSent")
-  tipsReceived    Tip[]     @relation("tipsReceived")
-  balances        UserBalance[]
+  user_id             Int       @id @default(autoincrement())
+  username            String    
+  email               String    
+  lowercase_username  String  @unique
+  lowercase_email     String  @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  hash                String
+  tipsSent            Tip[]     @relation("tipsSent")
+  tipsReceived        Tip[]     @relation("tipsReceived")
+  balances            UserBalance[]
 
   @@map("users")
 }

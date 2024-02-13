@@ -17,12 +17,23 @@ export class UserService {
 
   async updateMe(userId: number, updateUserDto: UpdateUserDto): Promise<User> {
     let hash: string | undefined;
+    let lowercase_username: string | undefined;
+    let lowercase_email: string | undefined;
+
     if (updateUserDto.password) {
       hash = await argon.hash(updateUserDto.password);
+    }
+    if (updateUserDto.username) {
+      lowercase_username = updateUserDto.username.toLowerCase();
+    }
+    if (updateUserDto.email) {
+      lowercase_email = updateUserDto.email.toLowerCase();
     }
 
     const data: Prisma.UserUpdateInput = {
       ...updateUserDto,
+      ...(lowercase_username && { lowercase_username }),
+      ...(lowercase_email && { lowercase_email }),
       ...(hash && { hash }),
     };
 

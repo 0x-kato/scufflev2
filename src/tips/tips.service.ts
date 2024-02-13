@@ -16,7 +16,7 @@ export class TipsService {
     if (!receiverUsername)
       throw new NotFoundException('Receiver username is required.');
     const receiver = await this.prisma.user.findUnique({
-      where: { username: receiverUsername },
+      where: { lowercase_username: receiverUsername.toLowerCase() },
     });
     if (!receiver)
       throw new NotFoundException(
