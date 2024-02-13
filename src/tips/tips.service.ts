@@ -23,13 +23,14 @@ export class TipsService {
         `Receiver with username "${receiverUsername}" not found.`,
       );
 
-    const senderBalance = await this.prisma.userBalance.findUnique({
-      where: { user_id: senderId },
-    });
-    if (!senderBalance || senderBalance.balance < amount)
-      throw new Error('Insufficient sender balance.');
-
     await this.prisma.$transaction(async (prisma) => {
+      const senderBalance = await prisma.userBalance.findUnique({
+        where: { user_id: senderId },
+      });
+      if (!senderBalance || senderBalance.balance < amount) {
+        throw new Error('Insufficient sender balance.');
+      }
+
       await prisma.userBalance.update({
         where: { user_id: senderId },
         data: { balance: { decrement: amount } },
