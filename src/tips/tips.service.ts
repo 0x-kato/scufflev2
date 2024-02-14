@@ -11,10 +11,10 @@ export class TipsService {
   async sendTip(tipDto: TipsDto, userId: number): Promise<void> {
     const { receiverUsername, amount } = tipDto;
     const senderId = userId;
-    console.log(senderId, userId);
 
     if (!receiverUsername)
       throw new NotFoundException('Receiver username is required.');
+
     const receiver = await this.prisma.user.findUnique({
       where: { lowercase_username: receiverUsername.toLowerCase() },
     });

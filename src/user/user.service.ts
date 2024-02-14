@@ -52,10 +52,10 @@ export class UserService {
   }
 
   async deleteMe(userId: number): Promise<User> {
-    const deletedUser = await this.prisma.user.delete({
-      where: { user_id: userId },
+    const deletedUser = await this.prisma.$transaction(async (prisma) => {
+      await prisma.userBalance.delete({ where: { user_id: userId } });
+      return prisma.user.delete({ where: { user_id: userId } });
     });
-
     return deletedUser;
   }
 }

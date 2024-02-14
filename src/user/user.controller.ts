@@ -50,7 +50,7 @@ export class UserController {
   }
 
   //D
-  @Delete()
+  @Delete('delete')
   @HttpCode(HttpStatus.ACCEPTED)
   deleteMe(@GetCurrentUserId() userId: number): Promise<User> {
     console.log(`${userId} has been deleted from the database.`);

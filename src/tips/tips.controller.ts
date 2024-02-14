@@ -25,6 +25,7 @@ export class TipsController {
     @Body() tipDto: TipsDto,
     @GetCurrentUserId() userId: number,
   ): Promise<void> {
+    console.log('Received tip request body:', tipDto);
     return this.tipsService.sendTip(tipDto, userId);
   }
 
