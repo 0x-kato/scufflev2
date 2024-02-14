@@ -157,8 +157,7 @@ describe('App e2e', () => {
           .post('/tips/send')
           .withBody(requestBody)
           .withHeaders({ Authorization: 'Bearer $S{userAt}' })
-          .expectStatus(202)
-          .inspect();
+          .expectStatus(202);
       });
     });
 
@@ -284,24 +283,44 @@ describe('App e2e', () => {
           .spec()
           .post('/tips/send')
           .withBody(requestBody)
-          .withHeaders({ Authorization: 'Bearer $S{userAt}' });
+          .withHeaders({ Authorization: 'Bearer $S{userAt}' })
+          .inspect();
 
         const results = await Promise.allSettled([
           sendTipSpec1.toss(),
           sendTipSpec2.toss(),
         ]);
 
-        results.forEach((result, index) => {
-          if (result.status === 'fulfilled') {
-            console.log(`Request ${index + 1} succeeded:`, result.value.status);
-          } else {
-            // 'rejected'
-            console.log(
-              `Request ${index + 1} failed:`,
-              result.reason.response.status,
-            );
-          }
-        });
+        //checking status codes instead of the fulfillment
+        let hasStatusCode202 = false;
+        let hasStatusCode409 = false;
+
+        if (
+          results[0].status === 'fulfilled' &&
+          results[0].value.statusCode === 202
+        ) {
+          hasStatusCode202 = true;
+          console.log('First request succeeded with status 202');
+        } else if (results[0].status === 'rejected') {
+          console.error(
+            'First request failed',
+            results[0].reason.response?.statusCode,
+          );
+        }
+
+        if (
+          results[1].status === 'fulfilled' &&
+          results[1].value.statusCode === 409
+        ) {
+          hasStatusCode409 = true;
+          console.log('Second request failed with status 409 as expected');
+        } else
+          () => {
+            console.log('Second request has unexpected behaviour');
+          };
+
+        expect(hasStatusCode202).toBeTruthy();
+        expect(hasStatusCode409).toBeTruthy();
       });
     });
   });

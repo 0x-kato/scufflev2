@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import TipsDto from './dto/tips.dto';
 import TipHistoryDto from './dto/tipHistory.dto';
 import TipReceivedDto from './dto/tipReceived.dto';
+import { Prisma, UserBalance } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class TipsService {
@@ -12,44 +19,66 @@ export class TipsService {
     const { receiverUsername, amount } = tipDto;
     const senderId = userId;
 
-    if (!receiverUsername)
-      throw new NotFoundException('Receiver username is required.');
+    try {
+      await this.prisma.$transaction(
+        async (prisma) => {
+          const receiver = await prisma.user.findUnique({
+            where: { lowercase_username: receiverUsername.toLowerCase() },
+          });
+          if (!receiver) {
+            throw new NotFoundException(
+              `Receiver with username "${receiverUsername}" not found.`,
+            );
+          }
 
-    const receiver = await this.prisma.user.findUnique({
-      where: { lowercase_username: receiverUsername.toLowerCase() },
-    });
-    if (!receiver)
-      throw new NotFoundException(
-        `Receiver with username "${receiverUsername}" not found.`,
-      );
+          const [senderBalance] = await this.prisma.$queryRaw<
+            UserBalance[]
+          >`SELECT "balance" FROM "balances" WHERE "user_id" = ${senderId} FOR UPDATE`;
+          if (!senderBalance || senderBalance.balance < amount) {
+            throw new Error('Insufficient sender balance.');
+          }
 
-    await this.prisma.$transaction(async (prisma) => {
-      const senderBalance = await prisma.userBalance.findUnique({
-        where: { user_id: senderId },
-      });
-      if (!senderBalance || senderBalance.balance < amount) {
-        throw new Error('Insufficient sender balance.');
-      }
+          await prisma.userBalance.update({
+            where: { user_id: senderId },
+            data: { balance: { decrement: amount } },
+          });
 
-      await prisma.userBalance.update({
-        where: { user_id: senderId },
-        data: { balance: { decrement: amount } },
-      });
+          await prisma.userBalance.update({
+            where: { user_id: receiver.user_id },
+            data: { balance: { increment: amount } },
+          });
 
-      await prisma.userBalance.update({
-        where: { user_id: receiver.user_id },
-        data: { balance: { increment: amount } },
-      });
-
-      await prisma.tip.create({
-        data: {
-          sender_id: senderId,
-          receiver_id: receiver.user_id,
-          amount,
-          status: 'Completed',
+          await prisma.tip.create({
+            data: {
+              sender_id: senderId,
+              receiver_id: receiver.user_id,
+              amount,
+              status: 'Completed',
+            },
+          });
         },
-      });
-    });
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          maxWait: 5000,
+          timeout: 10000,
+        },
+      );
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError) {
+        throw new HttpException(
+          'Conflict or deadlock detected, please retry your transaction.',
+          HttpStatus.CONFLICT,
+        );
+        console.error('Database error:', error.message);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  //for testing purposes
+  delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async getTipHistory(senderId: number): Promise<TipHistoryDto[]> {
