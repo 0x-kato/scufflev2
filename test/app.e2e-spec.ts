@@ -314,7 +314,9 @@ describe('App e2e', () => {
           500
         ) {
           hasStatusCode409 = true;
-          console.log('Second request failed with status 409 as expected');
+          console.log(
+            'Second request failed with status 409 or 500 as expected',
+          );
         } else
           () => {
             console.log('Second request has unexpected behaviour');

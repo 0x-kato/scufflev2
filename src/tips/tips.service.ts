@@ -8,7 +8,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import TipsDto from './dto/tips.dto';
 import TipHistoryDto from './dto/tipHistory.dto';
 import TipReceivedDto from './dto/tipReceived.dto';
-import { User, UserBalance } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
@@ -21,22 +20,33 @@ export class TipsService {
 
     try {
       await this.prisma.$transaction(async (prisma) => {
-        const lowercaseUsername = receiverUsername.toLowerCase();
-        const [receiver] = await prisma.$queryRaw<User[]>`
-                SELECT * FROM "users"
-                WHERE "lowercase_username" = ${lowercaseUsername}
-                LIMIT 1 FOR UPDATE;`;
+        const results: any = await prisma.$queryRaw`
+        SELECT u.user_id, u.lowercase_username, b.balance 
+        FROM "users" u
+        JOIN "balances" b ON u.user_id = b.user_id
+        WHERE u.lowercase_username = ${receiverUsername.toLowerCase()}
+        OR u.user_id = ${senderId}
+        FOR UPDATE`;
+
+        if (results.length < 2) {
+          throw new NotFoundException(`One or both users not found.`);
+        }
+
+        const senderBalance = results.find(
+          (r) => r.user_id === senderId,
+        )?.balance;
+        const receiver = results.find(
+          (r) => r.lowercase_username === receiverUsername.toLowerCase(),
+        );
+
+        if (!senderBalance || senderBalance < amount) {
+          throw new Error('Insufficient sender balance.');
+        }
+
         if (!receiver) {
           throw new NotFoundException(
             `Receiver with username "${receiverUsername}" not found.`,
           );
-        }
-
-        const [senderBalance] = await this.prisma.$queryRaw<
-          UserBalance[]
-        >`SELECT "balance" FROM "balances" WHERE "user_id" = ${senderId} FOR UPDATE`;
-        if (!senderBalance || senderBalance.balance < amount) {
-          throw new Error('Insufficient sender balance.');
         }
 
         await prisma.userBalance.update({
@@ -60,11 +70,13 @@ export class TipsService {
       });
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
-        throw new HttpException(
-          'Conflict or deadlock detected, please retry your transaction.',
-          HttpStatus.CONFLICT,
+        throw (
+          (new HttpException(
+            'Conflict or deadlock detected, please retry your transaction.',
+            HttpStatus.CONFLICT,
+          ),
+          console.error('Database error:', error.message))
         );
-        console.error('Database error:', error.message);
       } else {
         throw error;
       }
