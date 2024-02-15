@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import TipsDto from './dto/tips.dto';
 import TipHistoryDto from './dto/tipHistory.dto';
 import TipReceivedDto from './dto/tipReceived.dto';
-import { Prisma, UserBalance } from '@prisma/client';
+import { User, UserBalance } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
@@ -20,49 +20,44 @@ export class TipsService {
     const senderId = userId;
 
     try {
-      await this.prisma.$transaction(
-        async (prisma) => {
-          const receiver = await prisma.user.findUnique({
-            where: { lowercase_username: receiverUsername.toLowerCase() },
-          });
-          if (!receiver) {
-            throw new NotFoundException(
-              `Receiver with username "${receiverUsername}" not found.`,
-            );
-          }
+      await this.prisma.$transaction(async (prisma) => {
+        const lowercaseUsername = receiverUsername.toLowerCase();
+        const [receiver] = await prisma.$queryRaw<User[]>`
+                SELECT * FROM "users"
+                WHERE "lowercase_username" = ${lowercaseUsername}
+                LIMIT 1 FOR UPDATE;`;
+        if (!receiver) {
+          throw new NotFoundException(
+            `Receiver with username "${receiverUsername}" not found.`,
+          );
+        }
 
-          const [senderBalance] = await this.prisma.$queryRaw<
-            UserBalance[]
-          >`SELECT "balance" FROM "balances" WHERE "user_id" = ${senderId} FOR UPDATE`;
-          if (!senderBalance || senderBalance.balance < amount) {
-            throw new Error('Insufficient sender balance.');
-          }
+        const [senderBalance] = await this.prisma.$queryRaw<
+          UserBalance[]
+        >`SELECT "balance" FROM "balances" WHERE "user_id" = ${senderId} FOR UPDATE`;
+        if (!senderBalance || senderBalance.balance < amount) {
+          throw new Error('Insufficient sender balance.');
+        }
 
-          await prisma.userBalance.update({
-            where: { user_id: senderId },
-            data: { balance: { decrement: amount } },
-          });
+        await prisma.userBalance.update({
+          where: { user_id: senderId },
+          data: { balance: { decrement: amount } },
+        });
 
-          await prisma.userBalance.update({
-            where: { user_id: receiver.user_id },
-            data: { balance: { increment: amount } },
-          });
+        await prisma.userBalance.update({
+          where: { user_id: receiver.user_id },
+          data: { balance: { increment: amount } },
+        });
 
-          await prisma.tip.create({
-            data: {
-              sender_id: senderId,
-              receiver_id: receiver.user_id,
-              amount,
-              status: 'Completed',
-            },
-          });
-        },
-        {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-          maxWait: 5000,
-          timeout: 10000,
-        },
-      );
+        await prisma.tip.create({
+          data: {
+            sender_id: senderId,
+            receiver_id: receiver.user_id,
+            amount,
+            status: 'Completed',
+          },
+        });
+      });
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         throw new HttpException(

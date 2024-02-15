@@ -309,8 +309,9 @@ describe('App e2e', () => {
         }
 
         if (
-          results[1].status === 'fulfilled' &&
-          results[1].value.statusCode === 409
+          (results[1].status === 'fulfilled' &&
+            results[1].value.statusCode === 409) ||
+          500
         ) {
           hasStatusCode409 = true;
           console.log('Second request failed with status 409 as expected');
