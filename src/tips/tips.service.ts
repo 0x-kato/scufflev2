@@ -1,8 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import TipsDto from './dto/tips.dto';
 import TipHistoryDto from './dto/tipHistory.dto';
 import TipReceivedDto from './dto/tipReceived.dto';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class TipsService {
@@ -11,44 +17,75 @@ export class TipsService {
   async sendTip(tipDto: TipsDto, userId: number): Promise<void> {
     const { receiverUsername, amount } = tipDto;
     const senderId = userId;
-    console.log(senderId, userId);
 
-    if (!receiverUsername)
-      throw new NotFoundException('Receiver username is required.');
-    const receiver = await this.prisma.user.findUnique({
-      where: { lowercase_username: receiverUsername.toLowerCase() },
-    });
-    if (!receiver)
-      throw new NotFoundException(
-        `Receiver with username "${receiverUsername}" not found.`,
-      );
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        const results: any = await prisma.$queryRaw`
+        SELECT u.user_id, u.lowercase_username, b.balance 
+        FROM "users" u
+        JOIN "balances" b ON u.user_id = b.user_id
+        WHERE u.lowercase_username = ${receiverUsername.toLowerCase()}
+        OR u.user_id = ${senderId}
+        FOR UPDATE`;
 
-    const senderBalance = await this.prisma.userBalance.findUnique({
-      where: { user_id: senderId },
-    });
-    if (!senderBalance || senderBalance.balance < amount)
-      throw new Error('Insufficient sender balance.');
+        if (results.length < 2) {
+          throw new NotFoundException(`One or both users not found.`);
+        }
 
-    await this.prisma.$transaction(async (prisma) => {
-      await prisma.userBalance.update({
-        where: { user_id: senderId },
-        data: { balance: { decrement: amount } },
+        const senderBalance = results.find(
+          (r) => r.user_id === senderId,
+        )?.balance;
+        const receiver = results.find(
+          (r) => r.lowercase_username === receiverUsername.toLowerCase(),
+        );
+
+        if (!senderBalance || senderBalance < amount) {
+          throw new Error('Insufficient sender balance.');
+        }
+
+        if (!receiver) {
+          throw new NotFoundException(
+            `Receiver with username "${receiverUsername}" not found.`,
+          );
+        }
+
+        await prisma.userBalance.update({
+          where: { user_id: senderId },
+          data: { balance: { decrement: amount } },
+        });
+
+        await prisma.userBalance.update({
+          where: { user_id: receiver.user_id },
+          data: { balance: { increment: amount } },
+        });
+
+        await prisma.tip.create({
+          data: {
+            sender_id: senderId,
+            receiver_id: receiver.user_id,
+            amount,
+            status: 'Completed',
+          },
+        });
       });
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError) {
+        throw (
+          (new HttpException(
+            'Conflict or deadlock detected, please retry your transaction.',
+            HttpStatus.CONFLICT,
+          ),
+          console.error('Database error:', error.message))
+        );
+      } else {
+        throw error;
+      }
+    }
+  }
 
-      await prisma.userBalance.update({
-        where: { user_id: receiver.user_id },
-        data: { balance: { increment: amount } },
-      });
-
-      await prisma.tip.create({
-        data: {
-          sender_id: senderId,
-          receiver_id: receiver.user_id,
-          amount,
-          status: 'Completed',
-        },
-      });
-    });
+  //for testing purposes
+  delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async getTipHistory(senderId: number): Promise<TipHistoryDto[]> {
